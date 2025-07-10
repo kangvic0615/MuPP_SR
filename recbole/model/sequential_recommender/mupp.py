@@ -19,14 +19,6 @@ from recbole.model.loss import BPRLoss
 
 
 class MuPP(SequentialRecommender):
-    r"""
-    SASRec is the first sequential recommender based on self-attentive mechanism.
-
-    NOTE:
-        In the author's implementation, the Point-Wise Feed-Forward Network (PFFN) is implemented
-        by CNN with 1x1 kernel. In this implementation, we follows the original BERT implementation
-        using Fully Connected Layer to implement the PFFN.
-    """
 
     def __init__(self, config, dataset):
         super(MuPP, self).__init__(config, dataset)
@@ -63,10 +55,6 @@ class MuPP(SequentialRecommender):
             layer_norm_eps=self.layer_norm_eps,
         )
         
-        # if self.hidden_size % self.num_item_representation != 0:
-        #     raise ValueError("hidden_size must be divisible by num_item_representation")
-        # self.divide_hidden_size = self.hidden_size // self.num_item_representation
-        # self.representation_layer = nn.ModuleList([nn.Linear(self.divide_hidden_size, self.hidden_size) for _ in range(self.num_item_representation)])
         self.representation_layer = nn.ModuleList([
         nn.Linear(self.hidden_size, self.hidden_size) 
             for _ in range(self.num_item_representation)
@@ -103,60 +91,40 @@ class MuPP(SequentialRecommender):
         )
         position_ids = position_ids.unsqueeze(0).expand_as(item_seq)
         position_embedding = self.position_embedding(position_ids)
-
-        batch_size, seq_length = item_seq.size()  # seq_length는 max_seq_length와 동일
-              
-        # 각 배치에 대한 최대 가능 반복 횟수 계산 (원본 시퀀스를 포함해야 하므로 +1)
+        _, seq_length = item_seq.size()
         max_repeats = ((seq_length) / (item_seq_len)).floor().clamp(min=1)
-        
-        # 각 배치에 대한 실제 반복 횟수 생성
         num_repeats = torch.stack([
             torch.randint(1, int(max_rep)+1, (1,), device=item_seq.device)[0]
             for max_rep in max_repeats
         ])
-        
-        # 블록 인덱스 계산
         position_indices = torch.arange(seq_length, device=item_seq.device).unsqueeze(0)
         block_indices = position_indices // (item_seq_len.unsqueeze(1))
         within_block_pos = position_indices % (item_seq_len.unsqueeze(1))
         
-        # 유효한 위치 마스크 생성
         valid_mask = block_indices < num_repeats.unsqueeze(1)
         zero_positions = within_block_pos == item_seq_len.unsqueeze(1)
-        
-        # 원본 시퀀스에서 가져올 인덱스 계산
         src_indices = within_block_pos % item_seq_len.unsqueeze(1)
-        
-        # 새로운 시퀀스 생성
         new_seq = torch.where(
             valid_mask & ~zero_positions,
             torch.gather(item_seq, 1, src_indices),
             torch.zeros_like(item_seq)
         )
-        # 새로운 시퀀스 길이 계산
         new_seq_len = torch.where(
             num_repeats > 1,
             (((item_seq_len) * num_repeats)).clamp(max=seq_length),
             item_seq_len
         )
-        
-        # 기본 임베딩 생성
         base_emb = self.item_embedding(new_seq)
         new_emb = torch.zeros_like(base_emb)
-        
-        # 각 블록에 대한 임베딩 적용
         for i in range(num_repeats.max()):
             block_mask = (block_indices == i) & valid_mask & ~zero_positions
-            
             if i == num_repeats.max() - 1:
-                # 마지막 블록은 원본 임베딩 사용
                 new_emb = torch.where(
                     block_mask.unsqueeze(-1),
                     base_emb,
                     new_emb
                 )
             else:
-                # representation layer 순환 사용
                 layer_idx = i % self.num_item_representation
                 transformed_emb = self.representation_layer[layer_idx](base_emb)
                 new_emb = torch.where(
@@ -165,19 +133,15 @@ class MuPP(SequentialRecommender):
                     new_emb
                 )
         
-        # padding 위치는 원본 padding 임베딩 사용
         padding_mask = (new_seq == 0).unsqueeze(-1)
         new_emb = torch.where(
             padding_mask,
             self.item_embedding(torch.zeros_like(new_seq)),
             new_emb
         )
-        
         input_emb = new_emb + position_embedding
         input_emb = self.LayerNorm(input_emb)
         input_emb = self.dropout(input_emb)
-
-     
         extended_attention_mask = self.get_attention_mask(new_seq)
         
         trm_output = self.trm_encoder(

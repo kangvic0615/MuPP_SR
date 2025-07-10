@@ -1,1 +1,0 @@
-python run_recbole.py --model MuPP --dataset ml-100k --config_files configs/MuPP.yaml --train_batch_size 512 --num_item_representation 2 

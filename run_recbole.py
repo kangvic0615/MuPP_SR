@@ -16,11 +16,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
     # 1783808(ours) < 1784320
-    parser.add_argument("--model", "-m", type=str, default="PSR", help="name of models")
+    parser.add_argument("--model", "-m", type=str, default="SASRec", help="name of models")
     parser.add_argument(
-        "--dataset", "-d", type=str, default="ml-1m", help="name of datasets"
+        "--dataset", "-d", type=str, default="Amazon_Beatuy", help="name of datasets"
     )
-    parser.add_argument("--config_files", type=str, default='configs/psr.yaml', help="config files")
+    parser.add_argument("--config_files", type=str, default='configs/MuPP.yaml', help="config files")
     parser.add_argument(
         "--nproc", type=int, default=1, help="the number of process in this group"
     )

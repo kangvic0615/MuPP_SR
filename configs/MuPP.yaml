@@ -27,40 +27,20 @@ user_inter_num_interval: "[5,inf)"
 item_inter_num_interval: "[5,inf)"
 
 # Model
-num_layers: 2 # 
 n_layers: 4
 n_heads: 8
 hidden_size: 256
-# attribute_hidden_size: [64, 64, 64]
 inner_size: 256
 
 embedding_size: 256
 mask_ratio: 0.2
 ft_ratio: 0.5
 
-k_interests: 7 # k_interests: 5
-dropout_prob: 0.5
-dropout_probs: [0.3, 0.5]
-kernel_size: 3
-block_num: 5
-dilations: [1,4]
-reg_weight: 1e-5
-nv: 1
-nh: 2
-short_item_length: 2
-reg_weights: [0.01,0.0001]
-lmd: 0.1
-lmd_sem: 0.1
-contrast: 'us_x'
-sim: 'dot'
-tau: 1
-
 hidden_dropout_prob: 0.5
-attn_dropout_prob: 0.5 # 0.3
+attn_dropout_prob: 0.5 
 hidden_act: 'gelu'
 layer_norm_eps: 1e-12
 initializer_range: 0.02
-# selected_features: ['categories', 'title', 'brand']
 pooling_mode: 'sum' # sum, mean, max
 loss_type: 'CE'
 
@@ -68,30 +48,30 @@ num_item_representation: 2
 
 # training settings
 epochs: 300
-train_batch_size: 4096 # 1024
+train_batch_size: 4096
 learner: adam
 learning_rate: 0.0005
 eval_step: 2
 stopping_step: 5
 clip_grad_norm: ~
 weight_decay: 0.0
-neg_sampling: 
+# neg_sampling: 
+train_neg_sample_args: ~
 
 # evaluation settings
 eval_args:
-  split: { 'RS':[0.8,0.1,0.1] } # split: { 'LS': 'valid_and_test' }
+  split: { 'RS':[0.8,0.1,0.1] }
   group_by: user
   order: TO
   mode: full
 
-# disable negative sampling
-train_neg_sample_args: ~
+
 
 repeatable: True
-metrics: ["HIT","NDCG","GiniIndex", "ShannonEntropy",'ItemCoverage',"MRR", "MAP", "Recall"] # "GiniIndex", "ShannonEntropy", 
-topk: [5,10,20]
-valid_metric: Recall@20
+metrics: ["NDCG","MRR"] 
+topk: [3,5,10,20]
+valid_metric: NDCG@20
 valid_metric_bigger: True
-eval_batch_size: 512 # 128
+eval_batch_size: 512
 loss_decimal_place: 4
 metric_decimal_place: 4
